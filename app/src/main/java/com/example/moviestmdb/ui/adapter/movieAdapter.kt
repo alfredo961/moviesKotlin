@@ -7,7 +7,14 @@ import com.bumptech.glide.Glide
 import com.example.moviestmdb.databinding.ItemMovieBinding
 import com.example.moviestmdb.model.Movie
 
-class MovieAdapter(private val movies: List<Movie>, private val onMovieClick: (Movie) -> Unit) : RecyclerView.Adapter<MovieAdapter.MovieViewHolder>() {
+enum class MovieCategory {
+    NOW_PLAYING,
+    POPULAR,
+    TOP_RATED,
+    UPCOMING
+}
+
+class MovieAdapter(private val category: MovieCategory, private val movies: List<Movie>, private val onMovieClick: (Movie) -> Unit) : RecyclerView.Adapter<MovieAdapter.MovieViewHolder>() {
 
     inner class MovieViewHolder(private val binding: ItemMovieBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(movie: Movie) {

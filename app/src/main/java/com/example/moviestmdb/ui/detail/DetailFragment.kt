@@ -1,4 +1,4 @@
-package com.example.moviestmdb.ui
+package com.example.moviestmdb.ui.detail
 
 import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle

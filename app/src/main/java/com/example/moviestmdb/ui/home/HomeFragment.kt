@@ -6,14 +6,17 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.LiveData
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.moviestmdb.databinding.FragmentHomeBinding
 import com.example.moviestmdb.ui.adapter.MovieAdapter
+import com.example.moviestmdb.ui.adapter.MovieCategory
 import com.example.moviestmdb.utils.Constants
 import com.example.moviestmdb.utils.Status
-import com.example.moviestmdb.R.navigation.nav_graph
+import com.example.moviestmdb.model.Movie
+import com.example.moviestmdb.utils.Resource
 
 
 class HomeFragment : Fragment() {
@@ -35,10 +38,22 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // Configura los RecyclerViews
-        binding.nowPlayingRecyclerView.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+        setupRecyclerView(binding.nowPlayingRecyclerView, MovieCategory.NOW_PLAYING)
+        setupRecyclerView(binding.popularMoviesRecyclerView, MovieCategory.POPULAR)
+        setupRecyclerView(binding.topRatedMoviesRecyclerView, MovieCategory.TOP_RATED)
+        setupRecyclerView(binding.upcomingMoviesRecyclerView, MovieCategory.UPCOMING)
 
-        // Agrega el listener de scroll
-        binding.nowPlayingRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        // Carga los datos
+        viewModel.getNowPlayingMovies()
+        viewModel.getPopularMovies()
+        viewModel.getTopRatedMovies()
+        viewModel.getUpcomingMovies()
+    }
+
+    private fun setupRecyclerView(recyclerView: RecyclerView, category: MovieCategory) {
+        recyclerView.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
 
@@ -47,12 +62,26 @@ class HomeFragment : Fragment() {
                 val lastVisibleItem = layoutManager.findLastVisibleItemPosition()
 
                 if (totalItemCount <= lastVisibleItem + Constants.VISIBLE_THRESHOLD) {
-                    viewModel.getNowPlayingMovies()
+                    when (category) {
+                        MovieCategory.NOW_PLAYING -> viewModel.getNowPlayingMovies()
+                        MovieCategory.POPULAR -> viewModel.getPopularMovies()
+                        MovieCategory.TOP_RATED -> viewModel.getTopRatedMovies()
+                        MovieCategory.UPCOMING -> viewModel.getUpcomingMovies()
+                    }
                 }
             }
         })
 
-        viewModel.nowPlayingMovies.observe(viewLifecycleOwner) { resource ->
+        when (category) {
+            MovieCategory.NOW_PLAYING -> observeMovies(viewModel.nowPlayingMovies, recyclerView, MovieCategory.NOW_PLAYING)
+            MovieCategory.POPULAR -> observeMovies(viewModel.popularMovies, recyclerView, MovieCategory.POPULAR)
+            MovieCategory.TOP_RATED -> observeMovies(viewModel.topRatedMovies, recyclerView, MovieCategory.TOP_RATED)
+            MovieCategory.UPCOMING -> observeMovies(viewModel.upcomingMovies, recyclerView, MovieCategory.UPCOMING)
+        }
+    }
+
+    private fun observeMovies(liveData: LiveData<Resource<List<Movie>>>, recyclerView: RecyclerView, category: MovieCategory) {
+        liveData.observe(viewLifecycleOwner) { resource ->
             when (resource.status) {
                 Status.LOADING -> {
                     binding.progressBar.visibility = View.VISIBLE
@@ -61,25 +90,18 @@ class HomeFragment : Fragment() {
                     binding.progressBar.visibility = View.GONE
                     val movies = resource.data
                     if (movies != null) {
-                        val movieAdapter = MovieAdapter(movies) { movie ->
-                            //val action = HomeFragmentDirections.actionHomeFragmentToDetailsFragment(movie.id)
-                            //findNavController().navigate(action)
-
-
-
+                        val movieAdapter = MovieAdapter(category, movies) { movie ->
+                            val action = HomeFragmentDirections.actionHomeFragmentToDetailsFragment(movie.id)
+                            findNavController().navigate(action)
                         }
-                        binding.nowPlayingRecyclerView.adapter = movieAdapter
+                        recyclerView.adapter = movieAdapter
                     }
                 }
                 Status.ERROR -> {
                     binding.progressBar.visibility = View.GONE
-                    // Maneja el error
                 }
             }
         }
-
-        // Carga los datos
-        viewModel.getNowPlayingMovies()
     }
 
     override fun onDestroyView() {
